@@ -10,10 +10,6 @@ The experiment compares three mechanisms for assigning leadership positions and 
 
 Merit: leadership positions are assigned according to performance.
 
-Dice: leadership positions are assigned through a random procedure.
-
-Favoritism: leadership positions are assigned through a preferential procedure.
-
 These treatments allow the study to examine how the process used to assign authority influences perceived legitimacy, expectations, and willingness to participate in collective action.
 
 Each treatment folder contains its corresponding oTree project files, including the Python experiment logic, HTML templates, and supporting static files.

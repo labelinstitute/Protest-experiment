@@ -1,0 +1,567 @@
+{{ extends 'otree/Page.html' }}
+{{ load static }}
+
+{{ block title }}{{ endblock }}
+
+{{ block styles }}
+<style>
+.otree-timer, #otree-timer, .alert-warning { display: none !important; }
+*{ box-sizing:border-box; margin:0; padding:0; }
+
+.shell{
+    position:relative; border-radius:20px; overflow:hidden;
+    background:#f2f2f2; max-width:760px; margin:16px auto;
+}
+.bg-shapes{ position:absolute; inset:0; z-index:0; pointer-events:none; overflow:hidden; }
+
+.header{
+    position:relative; z-index:10; background:#315c72;
+    padding:12px 20px; display:flex; justify-content:space-between; align-items:center;
+}
+.round-tag{
+    background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.35);
+    color:#fff; font-size:12px; font-weight:500; padding:4px 14px; border-radius:999px;
+}
+.timer-wrap{ display:flex; align-items:center; gap:8px; }
+.timer-ring{ position:relative; width:44px; height:44px; flex-shrink:0; }
+.timer-ring svg{ position:absolute; inset:0; transform:rotate(-90deg); }
+.timer-num{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    font-size:12px; font-weight:500; color:#fff;
+}
+.timer-sec{ font-size:11px; color:rgba(255,255,255,0.65); }
+
+.body{
+    position:relative; z-index:10; display:flex; flex-direction:column; align-items:center;
+    padding:24px 20px 28px; gap:20px;
+}
+
+.identity{ display:flex; flex-direction:column; align-items:center; gap:8px; text-align:center; }
+.medal-wrap{
+    width:72px; height:72px; border-radius:50%; background:#fff; border:2px solid #315c72;
+    display:flex; align-items:center; justify-content:center;
+}
+.medal-wrap img{ width:58px; height:58px; object-fit:contain; }
+.id-name{ font-size:18px; font-weight:600; color:#24313a; }
+
+.leader-choice-reminder{
+    background:#fff; border:1.5px solid #e5e5e5; border-radius:12px;
+    padding:10px 14px; font-size:14px; font-weight:600; color:#24313a;
+}
+
+.net-area{
+    position:relative; width:100%; height:420px;
+    background:rgba(255,255,255,0.88); border-radius:14px;
+    border:1.5px solid #e5e5e5; overflow:hidden;
+}
+.net-svg{ position:absolute; inset:0; width:100%; height:100%; z-index:1; }
+#network-nodes{ position:absolute; inset:0; z-index:2; }
+.node-tip{
+    position:absolute; background:#24313a; color:#fff;
+    font-size:10px; padding:3px 9px; border-radius:5px;
+    pointer-events:none; white-space:nowrap; z-index:20; display:none;
+    transform:translateX(-50%);
+}
+.net-legend{
+    position:absolute; bottom:10px; right:12px; display:flex; gap:8px; z-index:5;
+}
+.leg-item{ display:flex; align-items:center; gap:4px; font-size:10px; color:#777; }
+.leg-dot{ width:10px; height:10px; border-radius:50%; border:1.5px solid; }
+
+.choice-section{
+    width:100%; display:flex; flex-direction:column; align-items:center; gap:10px;
+}
+.sec-label-choice{
+    font-size:10px; font-weight:600; color:#999;
+    letter-spacing:.7px; text-transform:uppercase; text-align:center;
+}
+.btns{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; width:100%; }
+.choice-input{ display:none; }
+.choice-label{
+    display:block; border-radius:10px; padding:14px 8px; text-align:center;
+    cursor:pointer; transition:all .18s; border:2px solid #e5e5e5;
+    background:#fff; font-size:14px; font-weight:600; color:#888;
+}
+.choice-label:hover{ border-color:#315c72; background:#eef6f8; color:#315c72; }
+
+.choice-input[value="protest"]:checked + .choice-label{
+    border-color:#315c72; background:#315c72; color:#fff;
+}
+.choice-input[value="undecided"]:checked + .choice-label{
+    border-color:#b59b5b; background:#f4ecd2; color:#6b5a32;
+}
+.choice-input[value="no_protest"]:checked + .choice-label{
+    border-color:#8c969d; background:#e7eaec; color:#33424c;
+}
+
+.errbox{ font-size:11px; color:#315c72; text-align:center; min-height:14px; }
+
+.outcomes{ width:100%; display:flex; flex-direction:column; align-items:center; gap:8px; }
+.sec-label-out{ font-size:10px; font-weight:600; color:#999; letter-spacing:.7px; text-transform:uppercase; }
+.base-payoff{
+    width:100%; text-align:center; background:#fff; border:1.5px solid #e5e5e5;
+    border-radius:10px; padding:10px 12px;
+}
+.base-payoff .small{ font-size:11px; color:#888; text-transform:uppercase; letter-spacing:.4px; }
+.base-payoff .big{ font-size:20px; font-weight:700; color:#111; margin-top:3px; }
+
+.prow{ display:flex; width:100%; border-radius:10px; overflow:hidden; border:1.5px solid #e5e5e5; }
+.pcell{
+    flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:12px 8px; gap:4px; border-right:1px solid #eee; min-height:88px;
+}
+.pcell:last-child{ border-right:none; }
+.pcell.success{ background:#eefbf3; }
+.pcell.undecided{ background:#fbf7eb; }
+.pcell.protestfail{ background:#eef6f8; }
+
+.pcell-val{ font-size:18px; font-weight:700; }
+.pcell.success .pcell-val{ color:#2f6b57; }
+.pcell.undecided .pcell-val{ color:#6b5a32; }
+.pcell.protestfail .pcell-val{ color:#315c72; }
+
+.pcell-desc{ font-size:10px; color:#666; text-align:center; line-height:1.35; font-weight:600; }
+.pcell-formula{ font-size:11px; color:#777; text-align:center; line-height:1.25; }
+
+.leader-form-wrap{
+    width:100%; background:#fff; border:1.5px solid #e5e5e5; border-radius:14px;
+    padding:18px 16px; display:flex; flex-direction:column; gap:14px;
+}
+.section-title{
+    font-size:15px; font-weight:700; color:#24313a; margin-top:4px;
+}
+.section-sub{
+    font-size:12px; color:#666; line-height:1.45;
+}
+/* =========================================================
+   GLOBAL SOBER HORIZONTAL DESIGN OVERRIDE
+   Palette: deep slate, muted teal-blue, warm sand, light gray.
+   ========================================================= */
+html, body, .otree-body, .container{background:#eef1f2 !important;color:#24313a !important;font-size:18px !important;line-height:1.55 !important;}
+.container, .otree-body .container{max-width:1180px !important;}
+.shell{max-width:1120px !important;min-height:620px !important;margin:18px auto !important;border-radius:18px !important;background:#f7f8f8 !important;border:1px solid #d9e0e3 !important;box-shadow:0 12px 34px rgba(36,49,58,.10) !important;}
+.bg-shapes{display:none !important;}
+.pg-header,.header{background:#315c72 !important;padding:18px 28px !important;min-height:68px !important;}
+.pg-title,.round-tag{font-size:20px !important;font-weight:700 !important;color:#fff !important;}.pg-step,.timer-sec{font-size:15px !important;color:rgba(255,255,255,.86) !important;}
+.body{padding:28px !important;display:grid !important;grid-template-columns:repeat(2,minmax(0,1fr)) !important;align-items:stretch !important;gap:22px !important;}
+.body > .card:first-child,.body > .info-block:first-child,.body > .intro-text:first-child{grid-column:1/-1 !important;}.body > button,.body > .next-btn,.next-btn{grid-column:1/-1 !important;}
+.card,.rule-card,.stat-card,.rank-card,.role-reveal,.leader-form-wrap,.option-card,.base-payoff,.prow,.net-area{background:#fff !important;border:1.5px solid #d9e0e3 !important;border-radius:16px !important;box-shadow:0 4px 14px rgba(36,49,58,.05) !important;}.card,.rule-card,.stat-card,.rank-card,.option-card{padding:22px 24px !important;}
+p,.info-line,.intro-text,.section-sub,.token-row,.rule-row,.tiebreak-row,.pcell-desc,.pcell-formula,label,.form-control{font-size:17px !important;}.sec-label,.sec-label-choice,.sec-label-out,.stat-label,.rank-label,.rule-card-title,.role-pre,.base-payoff .small{font-size:14px !important;letter-spacing:.06em !important;color:#60717b !important;font-weight:700 !important;}
+.option-grid,.rule-grid,.stats-grid,.choice-grid,.radio-grid{display:grid !important;grid-template-columns:repeat(2,minmax(0,1fr)) !important;gap:18px !important;}.btns{grid-template-columns:repeat(3,minmax(0,1fr)) !important;gap:14px !important;}
+.option-card.A,.option-card.B{background:#fbf7eb !important;border-color:#d7c89f !important;}.option-card-title,.id-name,.section-title{font-size:22px !important;color:#24313a !important;font-weight:800 !important;}.token-val,.stat-val,.rank-val,.base-payoff .big,.pcell-val{color:#24313a !important;}
+.radio-label,.choice-label{font-size:18px !important;padding:17px 12px !important;border-color:#cfd8dc !important;color:#33424c !important;background:#fff !important;}.radio-label:hover,.choice-label:hover{border-color:#315c72 !important;background:#eef6f8 !important;color:#315c72 !important;}.radio-input:checked+.radio-label,.choice-input[value="protest"]:checked+.choice-label{border-color:#315c72 !important;background:#315c72 !important;color:#fff !important;}.choice-input[value="undecided"]:checked+.choice-label{border-color:#b59b5b !important;background:#f4ecd2 !important;color:#51441f !important;}.choice-input[value="no_protest"]:checked+.choice-label{border-color:#8c969d !important;background:#e7eaec !important;color:#33424c !important;}
+.next-btn,button.next-btn{width:100% !important;padding:18px !important;background:#315c72 !important;color:#fff !important;border-radius:14px !important;font-size:19px !important;font-weight:700 !important;}.next-btn:hover{background:#24485a !important;}select.form-control,input.form-control,textarea.form-control,.form-control,.form-select{border-radius:12px !important;border:1.5px solid #cfd8dc !important;padding:13px 15px !important;font-size:17px !important;}select.form-control:focus,input.form-control:focus,textarea.form-control:focus{border-color:#315c72 !important;box-shadow:0 0 0 .2rem rgba(49,92,114,.12) !important;}
+.net-area{height:430px !important;}.choice-section,.outcomes{align-self:stretch !important;}.timer-ring{width:54px !important;height:54px !important;}.timer-num{font-size:16px !important;}
+@media(max-width:820px){.shell{max-width:96vw !important;min-height:auto !important;}.body{grid-template-columns:1fr !important;padding:20px !important;}.option-grid,.rule-grid,.stats-grid,.radio-grid{grid-template-columns:1fr !important;}.btns{grid-template-columns:1fr !important;}}
+</style>
+{{ endblock }}
+
+{{ block content }}
+<div class="shell">
+
+    <svg class="bg-shapes" viewBox="0 0 680 700" preserveAspectRatio="xMidYMid slice">
+        <polygon points="0,0 260,0 130,90 0,75" fill="#315c72"/>
+        <polygon points="680,0 680,60 440,60 520,0" fill="#315c72"/>
+        <polygon points="0,0 140,0 60,45 0,38" fill="#24485a" opacity="0.6"/>
+        <polygon points="90,0 270,0 160,80" fill="rgba(255,255,255,0.15)"/>
+        <polygon points="440,25 680,25 680,0 540,0" fill="rgba(255,255,255,0.1)"/>
+        <polygon points="520,55 680,55 680,130 590,130" fill="#e8e8e8" opacity="0.7"/>
+        <polygon points="0,560 150,530 195,610 0,640" fill="#e0e0e0" opacity="0.8"/>
+        <polygon points="520,590 680,560 680,700 540,700" fill="#315c72" opacity="0.9"/>
+        <polygon points="560,640 680,615 680,700 585,700" fill="#24485a"/>
+    </svg>
+
+    <div class="header">
+        <div class="round-tag">Round {{ round_number }} sur 8</div>
+
+        {{ if not is_leader }}
+        <div class="timer-wrap">
+            <div class="timer-ring">
+                <svg viewBox="0 0 44 44">
+                    <circle cx="22" cy="22" r="18" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="4"/>
+                    <circle cx="22" cy="22" r="18" fill="none" stroke="#fff" stroke-width="4"
+                            stroke-dasharray="113.1" stroke-dashoffset="0"
+                            id="timer-ring" stroke-linecap="round"/>
+                </svg>
+                <div class="timer-num" id="countdown">20</div>
+            </div>
+            <div class="timer-sec">sec</div>
+        </div>
+        {{ endif }}
+    </div>
+
+    <div class="body">
+
+        <div class="identity">
+            <div class="medal-wrap">
+                <img src="{{ static role_icon_path }}" alt="Role icon">
+            </div>
+
+            {{ if is_leader }}
+                <div class="id-name">Leader</div>
+            {{ else }}
+                <div class="id-name">{{ tier_label }} citoyen</div>
+            {{ endif }}
+
+            <div class="leader-choice-reminder">
+                {{ leader_choice_text }}
+            </div>
+        </div>
+
+        {{ if not is_leader }}
+            <div class="net-area" id="net-area">
+                <svg class="net-svg" id="network-lines"></svg>
+                <div id="network-nodes"></div>
+                <div class="node-tip" id="node-tip"></div>
+
+                <div id="net-data"
+                     data-my-id="{{ node_id }}"
+                     data-neighbors='{{ neighbors_json }}'
+                     data-choices='{{ live_choices_json }}'
+                     style="display:none"></div>
+
+                <div class="net-legend">
+                    <div class="leg-item">
+                        <div class="leg-dot" style="background:#e6f0f3;border-color:#315c72"></div>Protester
+                    </div>
+                    <div class="leg-item">
+                        <div class="leg-dot" style="background:#f4ecd2;border-color:#b59b5b"></div>Indécis
+                    </div>
+                    <div class="leg-item">
+                        <div class="leg-dot" style="background:#e7eaec;border-color:#8c969d"></div>Ne pas protester
+                    </div>
+                </div>
+            </div>
+        {{ else }}
+            <div class="leader-form-wrap">
+    <div class="section-title">Section 1. Votre sélection en tant que leader</div>
+    <div class="section-sub">
+        Veuillez répondre aux questions suivantes concernant la manière dont vous êtes devenu(e) leader
+        (Échelle de 1 à 7, où 1 signifie « d’accord » et 7 signifie « pas d’accord ».)
+    </div>
+
+    {{ formfield 'q1' }}
+    {{ formfield 'q2' }}
+    {{ formfield 'q3' }}
+    {{ formfield 'q4' }}
+    {{ formfield 'q5' }}
+    {{ formfield 'q6' }}
+    {{ formfield 'q7' }}
+
+    <div class="section-title">Section 2. Raisons de votre choix d’allocation</div>
+    <div class="section-sub">
+        Quelle importance chacune des considérations suivantes a-t-elle eue dans votre décision ?
+        (Échelle de 1 à 7, où 1 signifie « peu important » et 7 signifie « très important ».)
+    </div>
+
+    {{ formfield 'q8' }}
+    {{ formfield 'q9' }}
+    {{ formfield 'q10' }}
+    {{ formfield 'q11' }}
+    {{ formfield 'q12' }}
+    {{ formfield 'q13' }}
+    {{ formfield 'q14' }}
+    {{ formfield 'q15' }}
+
+    <div class="section-title">Section 3. Croyances concernant les réactions des citoyens</div>
+
+    {{ formfield 'q16' }}
+    {{ formfield 'q17' }}
+    {{ formfield 'q18' }}
+    {{ formfield 'q19' }}
+    {{ formfield 'q20' }}
+
+    <div class="section-title">Section 4. Équité et légitimité</div>
+    <div class="section-sub">
+        Évaluez les affirmations suivantes.
+        (Échelle de 1 à 7, où 1 signifie « d’accord » et 7 signifie « pas d’accord ».)
+    </div>
+
+    {{ formfield 'q21' }}
+    {{ formfield 'q22' }}
+    {{ formfield 'q23' }}
+    {{ formfield 'q24' }}
+</div>
+{{ endif }}
+        {{ if not is_leader }}
+        <div class="choice-section">
+            <div class="sec-label-choice">Your decision</div>
+            <div class="btns">
+               <div>
+                <input class="choice-input" type="radio" name="protest" value="protest" id="protest_yes">
+                <label class="choice-label" for="protest_yes">Protester</label>
+            </div>
+            <div>
+                <input class="choice-input" type="radio" name="protest" value="undecided" id="protest_undecided" checked>
+                <label class="choice-label" for="protest_undecided">Indécis</label>
+            </div>
+            <div>
+                <input class="choice-input" type="radio" name="protest" value="no_protest" id="protest_no">
+                <label class="choice-label" for="protest_no">Ne pas protester</label>
+            </div>
+            <div class="errbox" id="error-box"></div>
+        </div>
+
+        <div class="outcomes">
+    <div class="sec-label-out">Résultats possibles</div>
+
+    <div class="base-payoff">
+        <div class="small">Votre allocation du leader</div>
+        <div class="big">{{ base_payoff }}</div>
+    </div>
+
+    <div class="prow">
+        <div class="pcell success">
+            <div class="pcell-val">{{ success_payoff }}</div>
+            <div class="pcell-formula">
+                {{ base_payoff }} + {{ success_bonus_display }}
+            </div>
+            <div class="pcell-desc">
+                Vous protestez<br>
+                et la protestation réussit
+            </div>
+        </div>
+
+        <div class="pcell undecided">
+            <div class="pcell-val">{{ fail_undecided_payoff }}</div>
+            <div class="pcell-formula">
+                {{ base_payoff }} + 0
+            </div>
+            <div class="pcell-desc">
+                Échec<br>
+                indécis
+            </div>
+        </div>
+
+        <div class="pcell protestfail">
+            <div class="pcell-val">{{ fail_protest_payoff }}</div>
+            <div class="pcell-formula">
+                {{ base_payoff }} - {{ failure_penalty_display }}
+            </div>
+            <div class="pcell-desc">
+                Échec<br>
+                vous protestez
+            </div>
+        </div>
+    </div>
+</div>
+{{ endif }}
+
+</div>
+</div>
+
+<script>
+(function () {
+    const isLeader = {{ if is_leader }}true{{ else }}false{{ endif }};
+
+    const COLORS = {
+        protest:    { fill:'#e6f0f3', stroke:'#315c72', text:'#315c72', label:'Protest' },
+        undecided:  { fill:'#f4ecd2', stroke:'#b59b5b', text:'#6b5a32', label:'Undecided' },
+        no_protest: { fill:'#e7eaec', stroke:'#8c969d', text:'#4b5563', label:'Not protest' }
+    };
+
+    const netData = document.getElementById('net-data');
+    let myNodeId = 0;
+    let neighbors = [];
+    let liveChoices = {};
+
+    try {
+        if (netData) {
+            myNodeId = parseInt(netData.getAttribute('data-my-id') || '0');
+            neighbors = JSON.parse(netData.getAttribute('data-neighbors') || '[]');
+            liveChoices = JSON.parse(netData.getAttribute('data-choices') || '{}');
+        }
+    } catch (e) {
+        neighbors = [];
+        liveChoices = {};
+    }
+
+    function statusOf(id) {
+        const v = liveChoices[String(id)];
+        if (v === 'protest' || v === 'undecided' || v === 'no_protest') return v;
+        return 'undecided';
+    }
+
+    function computePositions(W, H) {
+        const cx = W / 2;
+        const cy = H / 2;
+        const R  = Math.min(W, H) * 0.30;
+        const pos = {};
+        pos[myNodeId] = { x: cx, y: cy };
+
+        neighbors.forEach(function (nId, i) {
+            const a = (2 * Math.PI * i / Math.max(neighbors.length, 1)) - Math.PI / 2;
+            pos[nId] = { x: cx + R * Math.cos(a), y: cy + R * Math.sin(a) };
+        });
+
+        return pos;
+    }
+
+    function renderNetwork() {
+        if (isLeader) return;
+
+        const area = document.getElementById('net-area');
+        const svg  = document.getElementById('network-lines');
+        const wrap = document.getElementById('network-nodes');
+
+        if (!area || !svg || !wrap || !myNodeId) return;
+
+        const W = area.clientWidth || 640;
+        const H = area.clientHeight || 420;
+
+        svg.innerHTML = '';
+        wrap.innerHTML = '';
+        svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+
+        const pos = computePositions(W, H);
+        const my  = pos[myNodeId];
+
+        neighbors.forEach(function (nId) {
+            const np = pos[nId];
+            if (!np) return;
+
+            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            line.setAttribute('x1', my.x);
+            line.setAttribute('y1', my.y);
+            line.setAttribute('x2', np.x);
+            line.setAttribute('y2', np.y);
+            line.setAttribute('stroke', '#fecdd3');
+            line.setAttribute('stroke-width', '2.5');
+            svg.appendChild(line);
+        });
+
+        function addNode(id, x, y, isMe) {
+            const st = COLORS[statusOf(id)];
+            const r  = isMe ? 30 : 22;
+
+            const div = document.createElement('div');
+            div.style.position = 'absolute';
+            div.style.left = (x - r) + 'px';
+            div.style.top = (y - r) + 'px';
+            div.style.width = (r * 2) + 'px';
+            div.style.height = (r * 2) + 'px';
+            div.style.borderRadius = '50%';
+            div.style.background = st.fill;
+            div.style.border = '2.5px solid ' + st.stroke;
+            div.style.display = 'flex';
+            div.style.alignItems = 'center';
+            div.style.justifyContent = 'center';
+            div.style.fontSize = (isMe ? 12 : 11) + 'px';
+            div.style.fontWeight = '700';
+            div.style.color = st.text;
+            div.style.zIndex = isMe ? '5' : '3';
+            div.style.cursor = 'default';
+            div.style.boxShadow = isMe ? '0 0 0 6px rgba(192,14,30,0.15)' : 'none';
+
+            if (isMe) {
+                div.textContent = 'You';
+            } else {
+                if (statusOf(id) === 'protest') div.textContent = 'P';
+                else if (statusOf(id) === 'no_protest') div.textContent = 'N';
+                else div.textContent = '?';
+            }
+
+            wrap.appendChild(div);
+
+            const lbl = document.createElement('div');
+            lbl.style.position = 'absolute';
+            lbl.style.left = (x - 32) + 'px';
+            lbl.style.top = (y + r + 5) + 'px';
+            lbl.style.width = '64px';
+            lbl.style.textAlign = 'center';
+            lbl.style.fontSize = '9px';
+            lbl.style.fontWeight = '600';
+            lbl.style.color = isMe ? '#555' : st.text;
+            lbl.style.lineHeight = '1.2';
+            lbl.textContent = isMe ? 'YOU' : st.label;
+            wrap.appendChild(lbl);
+
+            if (!isMe) {
+                div.addEventListener('mouseenter', function () {
+                    const aR = area.getBoundingClientRect();
+                    const dR = div.getBoundingClientRect();
+                    const tip = document.getElementById('node-tip');
+                    tip.textContent = COLORS[statusOf(id)].label;
+                    tip.style.display = 'block';
+                    tip.style.left = (dR.left - aR.left + r) + 'px';
+                    tip.style.top = (dR.top - aR.top - 28) + 'px';
+                });
+
+                div.addEventListener('mouseleave', function () {
+                    document.getElementById('node-tip').style.display = 'none';
+                });
+            }
+        }
+
+        neighbors.forEach(function (nId) {
+            if (pos[nId]) addNode(nId, pos[nId].x, pos[nId].y, false);
+        });
+
+        addNode(myNodeId, my.x, my.y, true);
+    }
+
+    window.liveRecv = function (data) {
+        if (data && data.live_choices) {
+            liveChoices = data.live_choices;
+            renderNetwork();
+        }
+    };
+
+    document.querySelectorAll('.choice-input').forEach(function (radio) {
+        radio.addEventListener('change', function () {
+            const err = document.getElementById('error-box');
+            if (err) err.textContent = '';
+
+            const action = radio.value;
+            liveChoices[String(myNodeId)] = action;
+            renderNetwork();
+
+            if (typeof liveSend === 'function') {
+                liveSend({ action: action });
+            }
+        });
+    });
+
+    if (!isLeader) {
+        liveChoices[String(myNodeId)] = 'undecided';
+        renderNetwork();
+
+        setTimeout(function () {
+            if (typeof liveSend === 'function') {
+                liveSend({ action: 'undecided' });
+            }
+        }, 100);
+    }
+
+    {{ if not is_leader }}
+    const TOTAL  = {{ timeout_seconds }};
+    const circum = 2 * Math.PI * 18;
+    let seconds = TOTAL;
+
+    const countEl = document.getElementById('countdown');
+    const ringEl  = document.getElementById('timer-ring');
+
+    if (countEl) countEl.textContent = seconds;
+
+    const timerInterval = setInterval(function () {
+        seconds--;
+        if (countEl) countEl.textContent = seconds;
+        if (ringEl) ringEl.setAttribute('stroke-dashoffset', circum * (1 - seconds / TOTAL));
+
+        if (seconds <= 5 && ringEl && countEl) {
+            ringEl.setAttribute('stroke', '#fbbf24');
+            countEl.style.color = '#fbbf24';
+        }
+
+        if (seconds <= 0) {
+            clearInterval(timerInterval);
+
+            const form = document.querySelector('form');
+            if (form) form.submit();
+        }
+    }, 1000);
+    {{ endif }}
+})();
+</script>
+
+{{ endblock }}
